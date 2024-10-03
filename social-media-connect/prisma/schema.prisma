@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,43 +7,137 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+}
+
+enum Plan {
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum PostStatus {
+  SCHEDULED
+  POSTED
+  FAILED
+}
+
+enum InteractionType {
+  LIKE
+  COMMENT
+  SHARE
+}
+
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String?
-  createdAt DateTime @default(now())
-  accounts  SocialAccount[]
-  posts     Post[]
+  id             String           @id @default(uuid())
+  email          String           @unique
+  password       String
+  name           String?
+  role           Role             @default(USER)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  subscription   Subscription?
+  accounts       SocialAccount[]
+  posts          Post[]
+  deletedAt      DateTime?
+  @@index([email])
+}
+
+model Subscription {
+  id                  Int                @id @default(autoincrement())
+  userId              String             @unique
+  razorpaySubscriptionId String          @unique
+  status              SubscriptionStatus
+  plan                Plan
+  currentPeriodEnd    DateTime
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  deletedAt           DateTime?
+  user                User               @relation(fields: [userId], references: [id])
+}
+
+enum Platform {
+  FACEBOOK
+  TWITTER
+  INSTAGRAM
+  LINKEDIN
+}
+
+enum Provider {
+  FACEBOOK
+  TWITTER
+  INSTAGRAM
+  LINKEDIN
+  GOOGLE
 }
 
 model SocialAccount {
-  id          Int      @id @default(autoincrement())
-  platform    String   // e.g., 'twitter', 'linkedin', 'facebook'
-  accessToken String
-  userId      Int
-  user        User     @relation(fields: [userId], references: [id])
-  posts       Post[]
+  id                Int       @id @default(autoincrement())
+  platform          Platform
+  accessToken       String
+  refreshToken      String?
+  expiresAt         DateTime?
+  provider          Provider
+  providerAccountId String    @unique
+  userId            String
+  user              User      @relation(fields: [userId], references: [id])
+  posts             Post[]
+
+  @@index([provider, providerAccountId])
 }
 
 model Post {
-  id          Int      @id @default(autoincrement())
-  content     String
-  mediaUrl    String?
-  scheduledAt DateTime
-  postedAt    DateTime?
-  status      String   // 'scheduled', 'posted', 'failed'
-  userId      Int
-  user        User     @relation(fields: [userId], references: [id])
-  accountId   Int
-  account     SocialAccount @relation(fields: [accountId], references: [id])
-  interactions Interaction[]
+  id               Int              @id @default(autoincrement())
+  content          String
+  mediaUrl         String?
+  scheduledAt      DateTime
+  postedAt         DateTime?
+  status           PostStatus       @default(SCHEDULED)
+  userId           String
+  user             User             @relation(fields: [userId], references: [id])
+  accountId        Int
+  account          SocialAccount    @relation(fields: [accountId], references: [id])
+  interactions     Interaction[]
+  platform         Platform
+
+  @@index([scheduledAt, status])
+  Media Media[]
 }
 
 model Interaction {
+  id        Int              @id @default(autoincrement())
+  type      InteractionType
+  content   String?          // For comments
+  createdAt DateTime         @default(now())
+  postId    Int
+  post      Post             @relation(fields: [postId], references: [id])
+  deletedAt DateTime?
+}
+
+model Media {
   id        Int      @id @default(autoincrement())
-  type      String   // e.g., 'like', 'comment'
-  content   String?  // For comments
+  url       String
   postId    Int
   post      Post     @relation(fields: [postId], references: [id])
+  deletedAt DateTime?
+}
+
+model Payment {
+  id             Int      @id @default(autoincrement())
+  transactionId  String   @unique
+  amount         Int
+  currency       String
+  status         String
+  subscriptionId String
+  createdAt      DateTime @default(now())
+  @@index([subscriptionId])
 }

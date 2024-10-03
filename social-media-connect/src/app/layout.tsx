@@ -1,17 +1,22 @@
-import ClientRootLayout from './ClientRootLayout'
+// src/app/layout.tsx
+import Providers from "./components/Providers";
+import '../styles/global.css';
 
-import { ReactNode } from 'react';
 
-interface RootLayoutProps {
-  children: ReactNode;
-}
 
-export default function RootLayout({ children }: RootLayoutProps) {
+
+
+export const metadata = {
+  title: "MySaaS",
+  description: "Your SaaS application description",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <ClientRootLayout>{children}</ClientRootLayout>
+        <Providers>{children}</Providers>
       </body>
     </html>
-  )
+  );
 }
